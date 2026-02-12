@@ -1,8 +1,5 @@
 import java.util.Properties
 
-val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -14,14 +11,23 @@ android {
     compileSdk {
         version = release(36)
     }
-    val apiKey = localProperties.getProperty("OPEN_WEATHER_API_KEY") ?: ""
 
     defaultConfig {
+
+        //load the values from .properties file
+        val keystoreFile = project.rootProject.file("local.properties")
+        val properties = Properties()
+        properties.load(keystoreFile.inputStream())
+
+        //return empty key in case something goes wrong
+        val apiKey = properties.getProperty("OPEN_WEATHER_API_KEY") ?: ""
+
         buildConfigField(
-            "String",
-            "OPEN_WEATHER_API_KEY",
-            "\"$apiKey\""
+            type = "String",
+            name = "OPEN_WEATHER_API_KEY",
+            value = apiKey
         )
+
         applicationId = "com.example.openweatherapp"
         minSdk = 24
         targetSdk = 36
