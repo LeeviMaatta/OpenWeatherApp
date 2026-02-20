@@ -1,50 +1,33 @@
 package com.example.openweatherapp.ViewModel
 
-import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.openweatherapp.BuildConfig
-import com.example.openweatherapp.data.model.WeatherResponse
-import com.example.openweatherapp.data.remote.RetrofitInstance
+import com.example.openweatherapp.data.local.AppDatabase
+import com.example.openweatherapp.data.model.WeatherEntity
+import com.example.openweatherapp.data.repository.WeatherRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-data class WeatherUiState(
-    val city: String = "",
-    val weather: WeatherResponse? = null,
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
+class WeatherViewModel(application: Application) : AndroidViewModel(application) {
+    private val dao = AppDatabase.getDatabase(application).weatherDao()
 
-class WeatherViewModel : ViewModel() {
-    var uiState by mutableStateOf(WeatherUiState())
-        private set
+    private val repository = WeatherRepository(
+        dao,
+        BuildConfig.OPEN_WEATHER_API_KEY
+    )
 
-    fun updateCity(newCity: String) {
-        uiState = uiState.copy(city = newCity)
-    }
+    private val _currentWeather = MutableStateFlow<WeatherEntity?>(null)
+    val currentWeather: StateFlow<WeatherEntity?> = _currentWeather
 
-    fun fetchWeather() {
+    val history = repository.getAllHistory()
+
+    fun fetchWeather(city: String) {
         viewModelScope.launch {
-            uiState = uiState.copy(isLoading = true, error = null)
-            try {
-                val response = RetrofitInstance.api.getWeatherByCity(
-                    city = uiState.city,
-                    apiKey = BuildConfig.OPEN_WEATHER_API_KEY
-                )
-                uiState = uiState.copy(
-                    weather = response,
-                    isLoading = false
-                )
-            } catch (e: Exception) {
-                Log.e("WeatherViewModel", "Virhe haettaessa säätä", e)
-                uiState = uiState.copy(
-                    isLoading = false,
-                    error = "Virhe haettaessa säätä"
-                )
-            }
+            val result = repository.getWeather(city)
+            _currentWeather.value = result
         }
     }
 }
